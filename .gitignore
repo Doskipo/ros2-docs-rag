@@ -1,0 +1,17 @@
+# ROS 2 documentation (third-party corpus; download it separately)
+ros2_documentation-rolling/
+
+# Generated artifacts (rebuilt by embeddings.py / retrieval.py)
+*.npy
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Machine-specific settings (absolute paths to your local env)
+.vscode/
+interpreter_path.txt
+
+# Virtual environments, if you ever create one inside the project
+.venv/
+venv/
