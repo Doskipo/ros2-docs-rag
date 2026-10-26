@@ -165,13 +165,20 @@ if __name__ == "__main__":
         plain = embed_chunks(model, chunks)
         contextual = embed_chunks(model, chunks, contextual=True)
         bm25 = build_bm25(chunks)
+        bm25_contextual = build_bm25(chunks, contextual=True)
 
         methods = {
             "Dense": lambda q: dense_scores(q, model, plain),
-            "Dense + contextual header": lambda q: dense_scores(q, model, contextual),
             "BM25": lambda q: bm25_scores(q, bm25),
             "Hybrid (dense + BM25, RRF)": lambda q: rrf_scores(
                 [dense_scores(q, model, plain), bm25_scores(q, bm25)]),
+            # Same methods with the contextual header
+            "Dense + ctx": lambda q: dense_scores(q, model, contextual),
+            "BM25 + ctx": lambda q: bm25_scores(q, bm25_contextual),
+            "Hybrid (dense + ctx, BM25)": lambda q: rrf_scores(
+                [dense_scores(q, model, contextual), bm25_scores(q, bm25)]),
+            "Hybrid (both + ctx)": lambda q: rrf_scores(
+                [dense_scores(q, model, contextual), bm25_scores(q, bm25_contextual)]),
         }
         for name, score_fn in methods.items():
             summary.append((name, chunk_size, *evaluate(name, score_fn, chunks)))

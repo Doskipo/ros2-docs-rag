@@ -6,7 +6,7 @@ import numpy as np
 from rank_bm25 import BM25Okapi
 
 from parsing import build_chunked_corpus
-from embeddings import load_model, embed_chunks, embed_query
+from embeddings import load_model, embed_chunks, embed_query, contextualize
 
 REPO_DIR = "./ros2_documentation-rolling"
 EMBEDDINGS_FILE = "embeddings.npy"
@@ -25,9 +25,11 @@ def tokenize(text):
     # Lowercase word tokens: "ros2 bag record --topics" -> ["ros2", "bag", "record", "topics"]
     return re.findall(r"\w+", text.lower())
 
-def build_bm25(chunks):
-    # BM25 index over the raw chunk text (keyword matching, no embeddings)
-    return BM25Okapi([tokenize(chunk["text"]) for chunk in chunks])
+def build_bm25(chunks, contextual=False):
+    # BM25 index over the chunk text (keyword matching, no embeddings).
+    # contextual=True indexes "file title > section heading" + text, like the embeddings
+    texts = [contextualize(chunk) if contextual else chunk["text"] for chunk in chunks]
+    return BM25Okapi([tokenize(text) for text in texts])
 
 def dense_scores(query, model, embeddings):
     # Both sides have norm 1, so the dot product IS the cosine similarity.

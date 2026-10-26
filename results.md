@@ -210,10 +210,48 @@ Rank of the correct chunk in the top 3 (– = not in the top 3). Ctx = dense + c
 - **The contextual header gives the best strict recall at size 200 (0.40) but the worst file recall (0.50).** Prepending page titles likely pulls in other pages with similar titles (as with `Python.rst` in Q2), so the top 3 more often contain no gold page at all.
 - **With 20 questions each one is worth 0.05.** Most gaps between methods are one or two questions, so the ranking of methods is a direction, not a firm result.
 
+## Contextual header with BM25 and hybrid
+
+**Change:** the contextual header (file title + section heading) is now also tested on BM25 and in two hybrids:
+- **Hybrid (dense + header, BM25):** the header only on the dense side; BM25 indexes the plain text.
+- **Hybrid (both + header):** the header on both the dense and the BM25 side, as in Anthropic's method.
+
+| Retrieval | Size | Recall@3 | MRR@3 | File recall@3 |
+|---|---|---|---|---|
+| BM25 + header | 200 | 0.35 | 0.29 | 0.60 |
+| BM25 + header | 500 | 0.30 | 0.21 | 0.55 |
+| Hybrid (dense + header, BM25) | 200 | 0.40 | 0.38 | 0.65 |
+| Hybrid (dense + header, BM25) | 500 | 0.50 | 0.33 | 0.75 |
+| Hybrid (both + header) | 200 | 0.45 | 0.42 | 0.65 |
+| Hybrid (both + header) | 500 | 0.35 | 0.27 | 0.70 |
+
+Rank of the correct chunk, compared with the plain hybrid (– = not in the top 3). Questions missed by all of these are left out.
+
+| # | Question | Hybrid 200 | Dense+h, BM25 200 | Both+h 200 | Hybrid 500 | Dense+h, BM25 500 | Both+h 500 |
+|---|---|---|---|---|---|---|---|
+| 1 | Safe domain ID range | 1 | 1 | 1 | 1 | 1 | 1 |
+| 3 | Best effort reliability | 2 | 1 | 1 | – | 2 | 2 |
+| 4 | Save topic data to a file | 3 | 1 | 1 | 1 | 1 | 1 |
+| 5 | Build all workspace packages | – | – | – | 2 | 3 | 3 |
+| 7 | Long task with progress and cancel | 1 | 1 | 1 | 2 | 3 | – |
+| 8 | Save node parameters to YAML | – | – | 3 | – | – | – |
+| 9 | Launch file languages | 3 | 1 | 1 | – | – | – |
+| 10 | Tool to publish a fixed transform | – | – | – | 3 | 2 | – |
+| 11 | Install workspace dependencies | – | – | – | 1 | 1 | 2 |
+| 16 | Quaternion components | – | 2 | 1 | 3 | 2 | – |
+| 18 | Call a service from the terminal | 1 | 1 | 1 | – | 2 | 1 |
+| 19 | Log severity levels | 1 | 1 | 1 | 1 | 1 | 1 |
+
+**Observations:**
+- **The header works better inside the hybrid than on its own.** On their own, dense + header and BM25 + header are mixed: better strict recall at size 200, equal or worse at size 500, and lower file recall. Inside the hybrid, the header on the dense side gives the best strict recall (0.50 at size 500), and the header on both sides gives the best MRR (0.42 at size 200).
+- **The gains show up mostly as higher ranks.** At size 200, Q3, Q4 and Q9 move up to rank 1 and Q16 enters the top 3. This is why MRR rises more than recall.
+- **No single setting wins every metric.** The best strict recall, MRR and file recall come from three different rows, and the header on the BM25 side helps at size 200 but hurts at size 500 (Q7, Q10, Q16 drop out).
+- **Overfitting risk.** These are 7 methods × 2 sizes tried on the same 20 questions, and the best rows lead by one or two questions. The best row on this set may not stay best on new questions. A held-out question set would be needed to choose a winner reliably.
+
 ## Reproduce
 
 ```powershell
 python evaluate.py
 ```
 
-Chunk sizes and questions are defined at the top of `evaluate.py` (`CHUNK_SETTINGS`, `QUESTIONS`). Every run evaluates all four methods (dense, dense + contextual header, BM25, hybrid) at each chunk size.
+Chunk sizes and questions are defined at the top of `evaluate.py` (`CHUNK_SETTINGS`, `QUESTIONS`). Every run evaluates all seven methods (dense, BM25 and hybrid, each with and without the contextual header, plus the hybrid with the header on both sides) at each chunk size.
