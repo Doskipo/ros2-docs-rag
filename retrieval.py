@@ -66,17 +66,3 @@ if __name__ == "__main__":
     for rank, (score, chunk) in enumerate(retrieve(query, model, chunks, embeddings), start=1):
         print(f"\n#{rank}  score={score:.4f}  {chunk['file']} > {chunk['heading']} (chunk {chunk['chunk_id']})")
         print(chunk["text"])
-
-
-
-"""
-A little bit of my explanation:
-
-text is mapped to tokens. These tokens correspond to a particular vector
-in a >300 dimensional space (for this model) as a look up table. Then, 
-perform 6 transform layers to add context and finally pool all the text.
-The text could be a 10 word query or a 500 word text; and all of them 
-finish as a single >300 vector. There are many consequences on that.
-The cosine similarity can catch as much as it can.
-
-"""

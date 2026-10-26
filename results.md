@@ -155,10 +155,65 @@ On this question set, **chunk size 500 with overlap 100 gave the higher Recall@3
 The cheap version only adds metadata that already exists. Adding an LLM text would fix the Q2 problem for example, since it gives context e.g. "This chunk is from the ROS 2 testing guida and shows how to configure setup.py for running pytest". Should be tested as another upgrade.
 
 
+## Expanded set: 20 questions, BM25 and hybrid
+
+**Changes:**
+- 15 new questions (6–20) across services, actions, parameters, launch, tf2, rosdep, logging, discovery and composition. Most are paraphrased rather than copying the docs' wording.
+- A question can now have several gold files when more than one page really answers it (e.g. the Python and C++ static-broadcaster tutorials). Pages that only mention the phrase in passing, such as changelogs, are not gold.
+- Two new methods: **BM25** (keyword ranking, `rank-bm25`) and **Hybrid**, which fuses the dense and BM25 rankings with Reciprocal Rank Fusion (k = 60).
+- New metric, **file recall@3**: at least one top-3 chunk comes from a gold file, even if it is not the paragraph with the answer.
+
+### Summary
+
+| Retrieval | Size | Recall@3 | MRR@3 | File recall@3 |
+|---|---|---|---|---|
+| Dense | 200 | 0.30 | 0.22 | 0.75 |
+| Dense | 500 | 0.30 | 0.18 | 0.60 |
+| Dense + contextual header | 200 | 0.40 | 0.26 | 0.50 |
+| Dense + contextual header | 500 | 0.30 | 0.19 | 0.55 |
+| BM25 | 200 | 0.25 | 0.23 | 0.65 |
+| BM25 | 500 | 0.35 | 0.22 | 0.65 |
+| Hybrid (RRF) | 200 | 0.35 | 0.26 | 0.60 |
+| Hybrid (RRF) | 500 | 0.40 | 0.28 | 0.75 |
+
+### Per question
+
+Rank of the correct chunk in the top 3 (– = not in the top 3). Ctx = dense + contextual header.
+
+| # | Question | Dense 200 | Ctx 200 | BM25 200 | Hybrid 200 | Dense 500 | Ctx 500 | BM25 500 | Hybrid 500 |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Safe domain ID range | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| 2 | Create a Python package | – | – | – | – | – | – | – | – |
+| 3 | Best effort reliability | 3 | 3 | 2 | 2 | – | – | – | – |
+| 4 | Save topic data to a file | – | 2 | – | 3 | 2 | 3 | 2 | 1 |
+| 5 | Build all workspace packages | – | – | – | – | 1 | 2 | – | 2 |
+| 6 | Request-reply between nodes | – | – | – | – | – | – | – | – |
+| 7 | Long task with progress and cancel | 2 | 3 | 1 | 1 | – | – | 1 | 2 |
+| 8 | Save node parameters to YAML | – | – | – | – | – | – | – | – |
+| 9 | Launch file languages | 2 | 2 | 1 | 3 | 3 | – | 2 | – |
+| 10 | Tool to publish a fixed transform | – | – | – | – | – | – | – | 3 |
+| 11 | Install workspace dependencies | – | – | – | – | – | – | 2 | 1 |
+| 12 | Run in every new terminal | – | – | – | – | – | – | – | – |
+| 13 | Check installation for problems | – | 2 | – | – | – | 1 | – | – |
+| 14 | Print debug messages | – | – | – | – | – | – | – | – |
+| 15 | Stop discovery on other computers | – | – | – | – | – | – | – | – |
+| 16 | Quaternion components | – | – | – | – | – | – | 3 | 3 |
+| 17 | Several nodes in one process | – | – | – | – | – | – | – | – |
+| 18 | Call a service from the terminal | 1 | 1 | – | 1 | 2 | 2 | – | – |
+| 19 | Log severity levels | 1 | 1 | 1 | 1 | 3 | 2 | 2 | 1 |
+| 20 | Measure topic message rate | – | – | – | – | – | – | – | – |
+
+**Observations:**
+- **Strict recall is low for every method (0.25–0.40), and 8 questions are missed by all of them.** Most of these are near-misses: the right page, often the right section, is retrieved but not the chunk with the answer. For example, in the hybrid 500 run Q8 retrieves the section "Save the parameters of a node to a file" but not the chunk with `ros2 param dump`, and Q15 and Q17 rank their gold page first with a neighbouring chunk. File recall@3 (0.50–0.75) shows this.
+- **Hybrid with 500-character chunks is the best overall:** top or tied-top on all three metrics. It is the only setting that finds Q10, and it lifts Q11 from rank 2 (BM25) to rank 1.
+- **BM25 and dense fail on different questions.** BM25 finds commands named in the question's wording (Q11 rosdep, Q16 quaternion) but misses Q18 entirely. Dense handles paraphrases like Q18 but misses Q11 and Q16. That complementarity is why fusing them helps.
+- **The contextual header gives the best strict recall at size 200 (0.40) but the worst file recall (0.50).** Prepending page titles likely pulls in other pages with similar titles (as with `Python.rst` in Q2), so the top 3 more often contain no gold page at all.
+- **With 20 questions each one is worth 0.05.** Most gaps between methods are one or two questions, so the ranking of methods is a direction, not a firm result.
+
 ## Reproduce
 
 ```powershell
 python evaluate.py
 ```
 
-Chunk settings (including the `contextual` flag) and questions are defined at the top of `evaluate.py` (`CHUNK_SETTINGS`, `QUESTIONS`).
+Chunk sizes and questions are defined at the top of `evaluate.py` (`CHUNK_SETTINGS`, `QUESTIONS`). Every run evaluates all four methods (dense, dense + contextual header, BM25, hybrid) at each chunk size.

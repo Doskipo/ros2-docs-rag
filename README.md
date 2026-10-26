@@ -16,20 +16,24 @@ python evaluate.py          # recall@3 for every setting; or: python retrieval.p
 
 ## Results
 
-5 hand-labelled questions, top k = 3. MRR@3 is the average of 1/rank of the correct chunk, counting 0 if it is not in the top 3.
+20 hand-labelled questions, top k = 3.
 
-| Retrieval | Chunk size | Recall@3 | MRR@3 |
-|---|---|---|---|
-| Dense | 200 | 0.40 | 0.27 |
-| Dense | 500 | 0.60 | 0.50 |
-| Dense + contextual header | 200 | 0.60 | 0.37 |
-| Dense + contextual header | 500 | 0.60 | 0.37 |
-| BM25 | 200 | 0.40 | 0.30 |
-| BM25 | 500 | 0.40 | 0.30 |
-| Hybrid (dense + BM25, RRF) | 200 | 0.60 | 0.37 |
-| Hybrid (dense + BM25, RRF) | 500 | 0.60 | 0.50 |
+- **Recall@3**: the chunk containing the answer is in the top 3.
+- **MRR@3**: average of 1/rank of that chunk, counting 0 if it is not in the top 3.
+- **File recall@3**: at least one top-3 chunk comes from a page that answers the question (right page, maybe not the right paragraph).
 
-Contextual header = file title and section heading prepended to each chunk before embedding. With only 5 questions, each one is worth 0.20, so treat the differences as indicative. Per-question details are in [results.md](results.md).
+| Retrieval | Chunk size | Recall@3 | MRR@3 | File recall@3 |
+|---|---|---|---|---|
+| Dense | 200 | 0.30 | 0.22 | **0.75** |
+| Dense | 500 | 0.30 | 0.18 | 0.60 |
+| Dense + contextual header | 200 | **0.40** | 0.26 | 0.50 |
+| Dense + contextual header | 500 | 0.30 | 0.19 | 0.55 |
+| BM25 | 200 | 0.25 | 0.23 | 0.65 |
+| BM25 | 500 | 0.35 | 0.22 | 0.65 |
+| Hybrid (dense + BM25, RRF) | 200 | 0.35 | 0.26 | 0.60 |
+| Hybrid (dense + BM25, RRF) | 500 | **0.40** | **0.28** | **0.75** |
+
+Contextual header = file title and section heading prepended to each chunk before embedding. With 20 questions each one is worth 0.05, so differences of one or two questions are still within noise. Per-question details are in [results.md](results.md).
 
 BM25 = keyword ranking over the raw chunk text (`rank-bm25`). Hybrid = dense and BM25 rankings combined with Reciprocal Rank Fusion (RRF, k = 60), which merges by rank so the two score scales need no normalisation.
 
@@ -38,11 +42,13 @@ BM25 = keyword ranking over the raw chunk text (`rank-bm25`). Hybrid = dense and
 
 From the results one can conclude that
 
-1. larger chunks win on context-heavy questions,
+1. no chunk size wins across methods,
 2. the header (contextual retrieval) helps small chunks but can misled,
 3. MRR shows the drop in rank that recall hides,
 4. BM25 fails on paraphrased questions,
-5. and the RRF hybrid mathces the best dense setting.
+5. and the RRF hybrid with 500-char chunks is best on every metric, because BM25 and dense miss different questions..
+
+How a sentence embedding is built, and why that matters for these results: [NOTES.md](NOTES.md).
 
 ## Next
 
