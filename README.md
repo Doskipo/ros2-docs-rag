@@ -24,11 +24,25 @@ python evaluate.py          # recall@3 for every setting; or: python retrieval.p
 | Dense | 500 | 0.60 | 0.50 |
 | Dense + contextual header | 200 | 0.60 | 0.37 |
 | Dense + contextual header | 500 | 0.60 | 0.37 |
-| BM25 | | not run yet | |
-| Hybrid (dense + BM25) | | not run yet | |
+| BM25 | 200 | 0.40 | 0.30 |
+| BM25 | 500 | 0.40 | 0.30 |
+| Hybrid (dense + BM25, RRF) | 200 | 0.60 | 0.37 |
+| Hybrid (dense + BM25, RRF) | 500 | 0.60 | 0.50 |
 
 Contextual header = file title and section heading prepended to each chunk before embedding. With only 5 questions, each one is worth 0.20, so treat the differences as indicative. Per-question details are in [results.md](results.md).
 
+BM25 = keyword ranking over the raw chunk text (`rank-bm25`). Hybrid = dense and BM25 rankings combined with Reciprocal Rank Fusion (RRF, k = 60), which merges by rank so the two score scales need no normalisation.
+
+
+## Key findings
+
+From the results one can conclude that
+
+1. larger chunks win on context-heavy questions,
+2. the header (contextual retrieval) helps small chunks but can misled,
+3. and MRR shows the drop in rank that recall hides.
+
 ## Next
 
-LLM-judge evaluation of generated answers, coming Friday.
+
+LLM-judge evaluation of generated answers.

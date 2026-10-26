@@ -1,7 +1,9 @@
+import re
 import sys
 from pathlib import Path
 
 import numpy as np
+from rank_bm25 import BM25Okapi
 
 from parsing import build_chunked_corpus
 from embeddings import load_model, embed_chunks, embed_query
@@ -19,16 +21,39 @@ def load_or_build_embeddings(model, chunks):
     np.save(EMBEDDINGS_FILE, embeddings)
     return embeddings
 
-def retrieve(query, model, chunks, embeddings, k=3):
-    q = embed_query(model, query)
+def tokenize(text):
+    # Lowercase word tokens: "ros2 bag record --topics" -> ["ros2", "bag", "record", "topics"]
+    return re.findall(r"\w+", text.lower())
 
+def build_bm25(chunks):
+    # BM25 index over the raw chunk text (keyword matching, no embeddings)
+    return BM25Okapi([tokenize(chunk["text"]) for chunk in chunks])
+
+def dense_scores(query, model, embeddings):
     # Both sides have norm 1, so the dot product IS the cosine similarity.
     # (N, 384) @ (384,) -> (N,): one score per chunk
-    scores = embeddings @ q
+    return embeddings @ embed_query(model, query)
 
+def bm25_scores(query, bm25):
+    return bm25.get_scores(tokenize(query))
+
+def rrf_scores(score_lists, k=60):
+    # Reciprocal Rank Fusion: fused(d) = sum over methods of 1 / (k + rank(d)).
+    # Only ranks are used, so cosine (0..1) and BM25 (unbounded) need no rescaling.
+    fused = np.zeros(len(score_lists[0]))
+    for scores in score_lists:
+        ranks = np.empty(len(scores))
+        ranks[np.argsort(scores)[::-1]] = np.arange(1, len(scores) + 1)
+        fused += 1 / (k + ranks)
+    return fused
+
+def top_k(scores, chunks, k=3):
     # argsort sorts ascending, so reverse it and keep the first k indices
-    top_k = np.argsort(scores)[::-1][:k]
-    return [(float(scores[i]), chunks[i]) for i in top_k]
+    best = np.argsort(scores)[::-1][:k]
+    return [(float(scores[i]), chunks[i]) for i in best]
+
+def retrieve(query, model, chunks, embeddings, k=3):
+    return top_k(dense_scores(query, model, embeddings), chunks, k)
 
 if __name__ == "__main__":
     query = " ".join(sys.argv[1:]) or "How do I create a ROS 2 package?"
