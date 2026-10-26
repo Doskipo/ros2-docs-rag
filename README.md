@@ -40,7 +40,9 @@ From the results one can conclude that
 
 1. larger chunks win on context-heavy questions,
 2. the header (contextual retrieval) helps small chunks but can misled,
-3. and MRR shows the drop in rank that recall hides.
+3. MRR shows the drop in rank that recall hides,
+4. BM25 fails on paraphrased questions,
+5. and the RRF hybrid mathces the best dense setting.
 
 ## Next
 
